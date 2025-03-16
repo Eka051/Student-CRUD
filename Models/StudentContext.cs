@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 using Student_CRUD.Helpers;
 
 namespace Student_CRUD.Models
@@ -25,17 +26,18 @@ namespace Student_CRUD.Models
 
                 while (reader.Read())
                 {
+                    DateOnly dateOfBirth = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("date_of_birth")));
                     students.Add(new Student
                     {
                         student_id = int.Parse(reader["student_id"].ToString()),
                         name = (string)reader["name"],
                         email = (string)reader["email"],
-                        dateOfBirth = DateOnly.Parse(reader["date_of_birth"].ToString())
+                        dateOfBirth = dateOfBirth
                     });
 
-                    cmd.Dispose();
-                    dbHelper.CloseConnection();
                 }
+                cmd.Dispose();
+                dbHelper.CloseConnection();
             }
             catch (Exception e)
             {
@@ -57,12 +59,15 @@ namespace Student_CRUD.Models
 
                 if (reader.Read())
                 {
-                    Student student = new Student();
-                    student.student_id = reader.GetInt32(0);
-                    student.name = reader.GetString(1);
-                    cmd.Dispose();
-                    dbHelper.CloseConnection();
+                    Student student = new Student
+                    {
+                        student_id = int.Parse(reader["student_id"].ToString()),
+                        name = (string)reader["name"],
+                        email = (string)reader["email"],
+                        dateOfBirth = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("date_of_birth")))
+                    };
                     return student;
+
                 }
                 cmd.Dispose();
                 dbHelper.CloseConnection();
@@ -97,16 +102,17 @@ namespace Student_CRUD.Models
             }
         }
 
-        public Student Update(Student student)
+        public Student Update(int student_id, Student student)
         {
             SqlDBHelper dbHelper = new SqlDBHelper(constr);
-            string query = "UPDATE student SET name = @name, email = @email, date_of_birth = @dateOfBirth";
+            string query = "UPDATE students SET name = @name, email = @email, date_of_birth = @dateOfBirth WHERE student_id = @student_id";
             try
             {
                 NpgsqlCommand cmd = dbHelper.GetCommand(query);
                 cmd.Parameters.AddWithValue("@name", student.name);
                 cmd.Parameters.AddWithValue("@email", student.email);
                 cmd.Parameters.AddWithValue("@dateOfBirth", student.dateOfBirth);
+                cmd.Parameters.AddWithValue("@student_id", student_id);
                 cmd.ExecuteNonQuery();
                 cmd.Dispose();
                 dbHelper.CloseConnection();

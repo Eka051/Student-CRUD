@@ -38,7 +38,7 @@ namespace Student_CRUD.Controllers
             return Ok(student);
         }
 
-        [HttpPost("api/student")]
+        [HttpPost("api/student/create")]
         public ActionResult<Student> Create(Student student)
         {
             if (student == null)
@@ -48,28 +48,32 @@ namespace Student_CRUD.Controllers
 
             var context = new StudentContext(_constr);
             var createdStudent = context.Create(student);
-            return CreatedAtAction(nameof(FindById), new { student_id = createdStudent.student_id }, createdStudent);
+            return Ok(createdStudent);
         }
 
-        [HttpPut("api/student/{student_id}")]
+        [HttpPut("api/student/update/{student_id}")]
         public ActionResult<Student> Update(int student_id, Student student)
         {
             if (student_id <= 0 || student == null)
             {
-                return BadRequest();
+                return BadRequest("ID invalid");
             }
 
             var context = new StudentContext(_constr);
-            if (context.FindById(student_id) == null)
+            var existingStudent = context.FindById(student_id);
+            if (existingStudent == null)
             {
-                return NotFound();
+                return NotFound($"Student with ID {student_id} not found");
             }
-
-            var updatedStudent = context.Update(student);
+            if (student.student_id != 0 && student.student_id != student_id)
+            {
+                return BadRequest("Mismatch between student ID in URL and request body.");
+            }
+            var updatedStudent = context.Update(student_id, student);
             return Ok(updatedStudent);
         }
 
-        [HttpDelete("{student_id}")]
+        [HttpDelete("api/delete/{student_id}")]
         public ActionResult Delete(int student_id)
         {
             if (student_id <= 0)
@@ -84,8 +88,8 @@ namespace Student_CRUD.Controllers
                 return NotFound();
             }
 
-            context.Delete(student);
-            return NoContent();
+            var delete = context.Delete(student);
+            return Ok(delete);
         }
     }
 }
