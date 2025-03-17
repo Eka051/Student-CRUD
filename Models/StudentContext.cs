@@ -7,10 +7,12 @@ namespace Student_CRUD.Models
     public class StudentContext
     {
         private string constr;
+        private readonly ILogger<StudentContext> _logger;
 
-        public StudentContext(string constr)
+        public StudentContext(string constr, ILogger<StudentContext> logger)
         {
             this.constr = constr;
+            _logger = logger;
         }
 
         public List<Student> FindAll()
@@ -26,13 +28,13 @@ namespace Student_CRUD.Models
 
                 while (reader.Read())
                 {
-                    DateOnly dateOfBirth = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("date_of_birth")));
+                    //DateOnly dateOfBirth = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("date_of_birth")));
                     students.Add(new Student
                     {
-                        student_id = int.Parse(reader["student_id"].ToString()),
-                        name = (string)reader["name"],
-                        email = (string)reader["email"],
-                        dateOfBirth = dateOfBirth
+                        student_id = reader.GetInt32(0),
+                        name = reader.GetString(1),
+                        email = reader.GetString(2),
+                        dateOfBirth = DateOnly.FromDateTime(reader.GetDateTime(3))
                     });
 
                 }
@@ -61,13 +63,11 @@ namespace Student_CRUD.Models
                 {
                     Student student = new Student
                     {
-                        student_id = int.Parse(reader["student_id"].ToString()),
-                        name = (string)reader["name"],
-                        email = (string)reader["email"],
-                        dateOfBirth = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("date_of_birth")))
+                        student_id = reader.GetInt32(0),
+                        name = reader.GetString(1),
+                        email = reader.GetString(2),
+                        dateOfBirth = DateOnly.FromDateTime(reader.GetDateTime(3))
                     };
-                    return student;
-
                 }
                 cmd.Dispose();
                 dbHelper.CloseConnection();
@@ -80,19 +80,20 @@ namespace Student_CRUD.Models
             return null;
         }
 
-        public Student Create(Student student)
+        public Student Create([FromBody] Student student)
         {
             SqlDBHelper dbHelper = new SqlDBHelper(constr);
-            string query = "INSERT INTO students (name, email, date_of_birth) VALUES (@name, @email, @dateOfBirth)";
+            string query = "INSERT INTO students (name, email, date_of_birth) VALUES (@name, @email, @dateOfBirth) RETURNING student_id";
             try
             {
                 NpgsqlCommand cmd = dbHelper.GetCommand(query);
                 cmd.Parameters.AddWithValue("@name", student.name);
                 cmd.Parameters.AddWithValue("@email", student.email);
                 cmd.Parameters.AddWithValue("@dateOfBirth", student.dateOfBirth);
-                cmd.ExecuteNonQuery();
+                student.student_id = (int)cmd.ExecuteScalar();
                 cmd.Dispose();
                 dbHelper.CloseConnection();
+
                 return student;
             }
             catch (Exception e)
@@ -102,7 +103,7 @@ namespace Student_CRUD.Models
             }
         }
 
-        public Student Update(int student_id, Student student)
+        public Student Update(int student_id, [FromBody] Student student)
         {
             SqlDBHelper dbHelper = new SqlDBHelper(constr);
             string query = "UPDATE students SET name = @name, email = @email, date_of_birth = @dateOfBirth WHERE student_id = @student_id";
@@ -124,6 +125,7 @@ namespace Student_CRUD.Models
                 throw new Exception(e.Message);
             }
         }
+
         public Student Delete(Student student)
         {
             SqlDBHelper dbHelper = new SqlDBHelper(constr);
